@@ -29,7 +29,7 @@ def normalize_key(text):
     """
     text = normalize(text)
     text = re.sub(r"\s+", "-", text)
-    texo = re.sub(r"[^a-z0-9\-]", "", text)
+    text = re.sub(r"[^a-z0-9\-]", "", text)
     return text
 
 
@@ -67,6 +67,7 @@ def score_text(query, candidate):
 def search_program(name, data):
     """Find the program most similar to 'name' within 'data' """
     if name in data:
+        #print("no se", name)
         return name, 100
     best, best_score = None, 0
     for p in data:
@@ -85,6 +86,7 @@ def search_actions(query, actions):
     minimun = 40
     result = []
     for key, info in actions.items():
+        print("find actions", key)
         best_options = [key] + info.get("aliases", [])
         best_score = max(score_text(query, c) for c in best_options)
         if best_score >= minimun:
