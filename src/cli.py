@@ -57,7 +57,7 @@ def main():
 
     data = load_data()
 
-    if args or args[0] == "add" or args or args[0]  == "-a":
+    if args and args[0] in ("add", "-a"):
         run_tui()
 
     if not args or args[0] == "--list":
