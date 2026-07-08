@@ -9,9 +9,11 @@ from colors import (
 )
 from core import search_program, search_actions
 from data_io import load_data, DATA_FILE
+from tui.app import run_tui
 
 
 def _print_result(key, info, score):
+    print("key de mierda", info)
     print("find commands", info.get("commands"))
     if score is None:
         print(f"\n{BLUE}\u25b8 {key}{RESET}")
@@ -43,7 +45,7 @@ def _print_help():
     print("  cf                        list all available programs")
     print("  cf <program>             list all the commands of this program")
     print("  cf <program> <action>    search specific action")
-    print("  cf add                    add a new command")
+    print("  cf add or cf -a                  add a new command")
     print(f"{GRAY}Example: cf git delete branch  |   cf nmap{RESET}")
 
 def main():
@@ -54,6 +56,9 @@ def main():
         return
 
     data = load_data()
+
+    if args or args[0] == "add" or args or args[0]  == "-a":
+        run_tui()
 
     if not args or args[0] == "--list":
         if not data:
