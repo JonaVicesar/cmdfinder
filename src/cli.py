@@ -12,13 +12,14 @@ from data_io import load_data, DATA_FILE
 
 
 def _print_result(key, info, score):
+    print("find commands", info.get("commands"))
     if score is None:
         print(f"\n{BLUE}\u25b8 {key}{RESET}")
     else:
         print(f"\n{BLUE}\u25b8 {key}{RESET} {GRAY}({score:.0f}%){RESET}")
-    if info.get("descripcion"): #i have the json in spanish xd, so most of the keys in the .json file are in spanish
-        print(f"  {GRAY}{info['descripcion']}{RESET}")
-    for cmd in info.get("comandos", []):
+    if info.get("description"): #i have the json in spanish xd, so most of the keys in the .json file are in spanish
+        print(f"  {GRAY}{info['description']}{RESET}")
+    for cmd in info.get("commands", []):
         print(f"  {GREEN}$ {cmd}{RESET}")
 
 
