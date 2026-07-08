@@ -6,7 +6,7 @@ from textual.containers import Vertical
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Static
 from textual.binding import Binding
 
-NEW_PROGRAM_ID = "__new_"
+NEW_PROGRAM_ID = "__new__"
 
 
 class SelectProgramsScreen(Screen):
