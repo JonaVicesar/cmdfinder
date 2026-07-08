@@ -10,7 +10,7 @@ NEW_PROGRAM_ID = "__new__"
 
 
 class SelectProgramsScreen(Screen):
-    BINDINGS = [Binding("escape", "salir", "Salir")]
+    BINDINGS = [Binding("escape", "exit", "Exit")]
 
     def __init__(self, data):
         super().__init__()
