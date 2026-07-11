@@ -85,7 +85,7 @@ def search_actions(query, actions):
     minimun = 40
     result = []
     for key, info in actions.items():
-        print("find actions", key)
+        #print("find actions", key)
         best_options = [key] + info.get("aliases", [])
         best_score = max(score_text(query, c) for c in best_options)
         if best_score >= minimun:
