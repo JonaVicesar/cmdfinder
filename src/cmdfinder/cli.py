@@ -9,7 +9,6 @@ from cmdfinder.colors import (
 )
 from cmdfinder.core import search_program, search_actions
 from cmdfinder.data_io import load_data, DATA_FILE
-from cmdfinder.tui.app import run_tui
 
 def _print_result(key, info, score):
     if score is None:
@@ -21,13 +20,11 @@ def _print_result(key, info, score):
     for cmd in info.get("commands", []):
         print(f"  {GREEN}$ {cmd}{RESET}")
 
-
 def _list_programs(data):
     print(f"{WHITE}Available programs:{RESET}")
     for name, info in sorted(data.items()):
         desc = info.get("descripcion_programa", "")
         print(f"  {SKY_BLUE}{name}{RESET}  {GRAY}{desc}{RESET}")
-
 
 def _list_all_actions(program, data):
     actions = data[program].get("actions", {})
@@ -35,7 +32,6 @@ def _list_all_actions(program, data):
     for key in sorted(actions.keys()):
         _print_result(key, actions[key], None)
     print()
-
 
 def _print_help():
     print(f"{YELLOW}Use:{RESET}")
@@ -48,23 +44,55 @@ def _print_help():
 def main():
     args = sys.argv[1:]
 
+    #print help
     if args and args[0] in ("-h", "--help"):
         _print_help()
         return
 
     data = load_data()
 
+    #add new commands, if the user just use -a or add open the tui
     if args and args[0] in ("add", "-a"):
-        run_tui()
+        if len(args) == 1:
+            from cmdfinder.tui.app import run_tui
+            run_tui()
+            return
+ 
+        from cmdfinder.add_command import add_command, print_add_help
+        if len(args) not in (3, 4, 5):
+            print_add_help()
+            return
+        program_name = args[1]
+        command = args[2]
+        alias = args[3] if len(args) >= 4 else None
+        description = args[4] if len(args) == 5 else None
+        add_command(program_name, command, alias, description)
         return
 
+    
+    #FOR NOW I WILL NOT USE IT, THE BODY OF THE COMMAND MAY BE TOO LONG
+    #and the matcheo could be confusing
+
+    # add new aliases with just one command 
+    """if args and args[0] in ("-e", "-edit"):
+        from cmdfinder.alias_edit import add_alias, print_alias_help
+        
+        if len(args) != 4:
+            print_alias_help()
+            return
+    
+        _, program_name, query, new_alias = args
+        add_alias(program_name, query, new_alias)
+        return """
+
+    #list available programs/comands
     if not args or args[0] == "--list":
         if not data:
             print(f"{RED}There's no data in {DATA_FILE}{RESET}")
             sys.exit(1)
         _list_programs(data)
         return
-
+    
     if not data:
         print(f"{RED}There's no data in {DATA_FILE}{RESET}")
         sys.exit(1)
