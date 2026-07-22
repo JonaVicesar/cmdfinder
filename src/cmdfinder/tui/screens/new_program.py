@@ -6,9 +6,8 @@ from textual.containers import Vertical, Horizontal
 from textual.widgets import Header, Footer, Input, Button, Label
 from textual.binding import Binding
 
-
 class NewProgramScreen(Screen):
-    BINDINGS = [Binding("escape", "volver", "Volver")]
+    BINDINGS = [Binding("escape", "back", "Cancel")]
 
     def __init__(self, data):
         super().__init__()
@@ -47,5 +46,3 @@ class NewProgramScreen(Screen):
 
     def action_back(self) -> None:
         self.app.pop_screen()
-
-

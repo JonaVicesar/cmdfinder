@@ -8,12 +8,11 @@ from textual.binding import Binding
 
 from cmdfinder.core import normalize_key
 from cmdfinder.data_io import save_data
-
 class FormScreen(Screen):
     BINDINGS = [
-        Binding("escape", "volver", "Cancelar"),
-        Binding("ctrl+s", "guardar", "Guardar"),
-    ]
+        Binding("escape", "back", "Cancel"),
+        Binding("ctrl+s", "save", "Save"),
+    ]   
 
     def __init__(self, data, program):
         super().__init__()
@@ -30,7 +29,7 @@ class FormScreen(Screen):
             Input(placeholder="borrar rama, delete branch", id="input_aliases"),
             Label("Description:"),
             Input(placeholder="what does this action", id="input_description"),
-            Label("Comands (one for line):"),
+            Label("Comands (one for line, optional if the action already exists):"),
             TextArea(id="textarea_comands"),
             Horizontal(
                 Button("Save (Ctrl+S)", variant="success", id="btn_save"),
@@ -45,8 +44,8 @@ class FormScreen(Screen):
             self.action_back()
         else:
             self.action_save()
-
     def action_back(self) -> None:
+
         self.app.pop_screen()
 
     def action_save(self) -> None:
@@ -66,17 +65,24 @@ class FormScreen(Screen):
         comands_raw = self.query_one("#textarea_comands", TextArea).text
         comands_new = [l.strip() for l in comands_raw.splitlines() if l.strip()]
 
-        if not comands_new:
-            self.app.bell()
-            return
-
         actions = self.data[self.program].setdefault("actions", {})
-        exist = actions.get(key, {"aliases": [], "description": "", "comands": []})
+        exist = actions.get(key)
+
+        if exist is None:
+            if not comands_new:
+                self.app.bell()
+                return
+            exist = {"aliases": [], "description": "", "commands": []}
+        else:
+            
+            if not comands_new and not aliases_new and not description:
+                self.app.bell()
+                return
 
         actions[key] = {
             "aliases": list(dict.fromkeys(exist.get("aliases", []) + aliases_new)),
             "description": description or exist.get("description", ""),
-            "comands": list(dict.fromkeys(exist.get("comands", []) + comands_new)),
+            "commands": list(dict.fromkeys(exist.get("commands", []) + comands_new)),
         }
 
         save_data(self.data)
