@@ -10,13 +10,17 @@
           "nuke branch",
           "get rid of branch",
           "drop branch",
-          "branch delete"
+          "branch delete",
+          "bye branch",
+          "branche limpieza"
         ],
         "description": "Deletes a local or remote branch",
         "commands": [
           "git branch -d <branch>",
           "git branch -D <branch>  # force delete even if not merged",
-          "git push origin --delete <branch>  # delete remote branch"
+          "git push origin --delete <branch>  # delete remote branch",
+          "git push origin :<branch>  # alternative delete remote",
+          "git branch -dr <branch>  # delete remote tracking branch"
         ]
       },
       "undo-commit": {
@@ -27,13 +31,35 @@
           "delete commit",
           "remove commit",
           "go back one commit",
-          "revert last commit"
+          "revert last commit",
+          "oops",
+          "my bad",
+          "fix last commit",
+          "forget that commit",
+          "i fucked up",
+          "i messed up",
+          "la cague",
+          "screwed up",
+          "shit i did it again",
+          "oops i did it again",
+          "i broke it",
+          "save me",
+          "help im drowning",
+          "undo",
+          "go back",
+          "take it back",
+          "never happened",
+          "that was a mistake",
+          "fuck me",
+          "please undo"
         ],
-        "description": "Removes or undoes the last commit",
+        "description": "Removes or undoes the last commit (when you mess up)",
         "commands": [
           "git reset --soft HEAD~1  # removes commit, keeps changes staged",
           "git reset --hard HEAD~1  # removes commit and changes (destructive)",
-          "git revert HEAD  # creates a new commit that undoes the previous one (safe for remote)"
+          "git revert HEAD  # creates a new commit that undoes the previous one (safe for remote)",
+          "git reset --mixed HEAD~1  # keeps changes unstaged",
+          "git reset --keep HEAD~1  # keeps changes if possible"
         ]
       },
       "remove-file": {
@@ -43,12 +69,17 @@
           "stop tracking file",
           "untrack file",
           "forget file",
-          "remove from git"
+          "remove from git",
+          "git rm",
+          "delete from repo"
         ],
         "description": "Removes a file from the repo or stops tracking it",
         "commands": [
           "git rm <file>",
-          "git rm --cached <file>  # stops tracking but keeps it on disk"
+          "git rm --cached <file>  # stops tracking but keeps it on disk",
+          "git rm -r <folder>  # remove folder recursively",
+          "git rm -f <file>  # force remove",
+          "git rm --ignore-unmatch <file>  # don't error if not found"
         ]
       },
       "discard-changes": {
@@ -59,13 +90,18 @@
           "undo local changes",
           "reset changes",
           "scrap changes",
-          "revert uncommitted"
+          "revert uncommitted",
+          "nuke changes",
+          "clean working dir"
         ],
         "description": "Discards uncommitted changes in the working directory",
         "commands": [
           "git checkout -- <file>",
           "git restore <file>  # modern equivalent",
-          "git reset --hard  # discards ALL uncommitted changes"
+          "git reset --hard  # discards ALL uncommitted changes",
+          "git clean -fd  # remove untracked files and directories",
+          "git restore .  # restore all files",
+          "git checkout .  # classic restore all"
         ]
       },
       "view-history": {
@@ -76,12 +112,22 @@
           "log",
           "git log",
           "show timeline",
-          "history log"
+          "history log",
+          "what happened",
+          "see commits",
+          "timeline"
         ],
-        "description": "Shows the commit history",
+        "description": "Shows the commit history with various formats",
         "commands": [
           "git log --oneline --graph --all",
-          "git log -p <file>  # history of a specific file"
+          "git log -p <file>  # history of a specific file",
+          "git log --since=2.weeks  # commits since 2 weeks",
+          "git log --author=\"<name>\"  # commits by author",
+          "git log --grep=\"<pattern>\"  # search commit messages",
+          "git log --stat  # show file stats",
+          "git log --pretty=format:\"%h - %an, %ar : %s\"  # custom format",
+          "git log --oneline --decorate --graph --all  # all branches graph",
+          "git log -S<pattern>  # search for code changes"
         ]
       },
       "rename-branch": {
@@ -90,12 +136,14 @@
           "change branch name",
           "ren branch",
           "mv branch",
-          "branch rename"
+          "branch rename",
+          "rename current branch"
         ],
         "description": "Changes the name of a branch",
         "commands": [
           "git branch -m <old> <new>",
-          "git branch -m <new>  # if you're on the branch you want to rename"
+          "git branch -m <new>  # if you're on the branch you want to rename",
+          "git branch -m <new> && git push origin -u <new>  # rename and push"
         ]
       },
       "stash-changes": {
@@ -106,13 +154,20 @@
           "park changes",
           "hold changes",
           "temporary save",
-          "git stash"
+          "git stash",
+          "hide changes",
+          "store changes"
         ],
         "description": "Saves uncommitted changes to come back to them later",
         "commands": [
           "git stash",
+          "git stash push -m \"<message>\"  # stash with message",
           "git stash pop  # brings the stashed changes back",
-          "git stash list  # view all saved stashes"
+          "git stash list  # view all saved stashes",
+          "git stash apply  # apply without removing from stash",
+          "git stash drop stash@{0}  # delete a specific stash",
+          "git stash clear  # remove all stashes",
+          "git stash show -p  # show stash content"
         ]
       },
       "squash-commits": {
@@ -122,122 +177,237 @@
           "merge commits",
           "fold commits",
           "compress commits",
-          "join commits"
+          "join commits",
+          "flatten commits"
         ],
         "description": "Combines multiple commits into one",
         "commands": [
-          "git rebase -i HEAD~<n>  # choose 'squash' for commits you want to combine"
-        ]
-      }
-    }
-  },
-  "npm": {
-    "program_description": "npm - Node.js package manager",
-    "actions": {
-      "install-package": {
-        "aliases": [
-          "install package",
-          "add package",
-          "install dependency",
-          "npm install",
-          "get package",
-          "add dependency",
-          "install npm"
-        ],
-        "description": "Installs a package as a project dependency",
-        "commands": [
-          "npm install <package>",
-          "npm install <package> --save-dev  # as a development dependency only"
+          "git rebase -i HEAD~<n>  # choose 'squash' for commits you want to combine",
+          "git reset --soft HEAD~<n> && git commit -m \"<message>\"  # alternative squash method"
         ]
       },
-      "install-global": {
+      "cherry-pick": {
         "aliases": [
-          "install globally",
-          "global install",
-          "npm global",
-          "install global package",
-          "global npm"
+          "cherry pick",
+          "apply commit",
+          "copy commit",
+          "pick commit",
+          "get that commit",
+          "steal commit"
         ],
-        "description": "Installs a package available globally on your machine",
-        "commands": ["npm install -g <package>"]
-      },
-      "uninstall-package": {
-        "aliases": [
-          "uninstall package",
-          "remove package",
-          "delete package",
-          "remove dependency",
-          "npm uninstall",
-          "uninstall npm"
-        ],
-        "description": "Removes a package from the project",
-        "commands": ["npm uninstall <package>"]
-      },
-      "update-packages": {
-        "aliases": [
-          "update packages",
-          "upgrade dependencies",
-          "npm update",
-          "refresh packages",
-          "update dependencies"
-        ],
-        "description": "Updates packages according to the package.json limits",
+        "description": "Applies a specific commit from another branch",
         "commands": [
-          "npm update",
-          "npm outdated  # check which ones are outdated before updating"
+          "git cherry-pick <commit-hash>",
+          "git cherry-pick <hash1> <hash2>  # multiple commits",
+          "git cherry-pick -n <hash>  # don't auto-commit",
+          "git cherry-pick --abort  # cancel cherry-pick",
+          "git cherry-pick --continue  # continue after resolving conflicts"
         ]
       },
-      "clear-cache": {
+      "cherry": {
         "aliases": [
-          "clear cache",
-          "purge cache",
-          "clean npm",
-          "reset cache",
-          "npm cache clean"
+          "show missing commits",
+          "find missing commits",
+          "show unpushed commits",
+          "what's missing",
+          "compare branches",
+          "cherry",
+          "unpushed commits",
+          "missed commits"
         ],
-        "description": "Cleans the npm cache (useful when installs are acting weird)",
-        "commands": ["npm cache clean --force"]
-      },
-      "run-script": {
-        "aliases": [
-          "run script",
-          "npm run",
-          "execute script",
-          "start script",
-          "launch script",
-          "run npm script"
-        ],
-        "description": "Runs a script defined in package.json",
+        "description": "Shows commits that haven't been applied to another branch",
         "commands": [
-          "npm run <script-name>",
-          "npm start  # shortcut if the script is named 'start'"
+          "git cherry -v  # show commits in current branch not in upstream",
+          "git cherry origin/main  # compare with remote branch",
+          "git cherry --abbrev  # short commit hashes",
+          "git cherry -v | grep -v ^-  # commits present in branch",
+          "git cherry -v | grep ^-  # commits already applied"
         ]
       },
-      "init-project": {
+      "bisect": {
         "aliases": [
-          "init project",
-          "create package.json",
-          "npm init",
-          "new project",
-          "start project",
-          "initialize npm"
+          "bisect",
+          "find bug commit",
+          "binary search commits",
+          "find breaking change",
+          "find culprit commit",
+          "debug history"
         ],
-        "description": "Creates a new package.json",
-        "commands": ["npm init -y  # with defaults, no questions asked"]
-      },
-      "check-vulnerabilities": {
-        "aliases": [
-          "check vulnerabilities",
-          "npm audit",
-          "security check",
-          "audit packages",
-          "check security",
-          "vulnerability scan"
-        ],
-        "description": "Checks for known vulnerabilities in your dependencies",
+        "description": "Binary search to find which commit introduced a bug",
         "commands": [
-          "npm audit",
-          "npm audit fix  # attempts to auto-fix what it can"
+          "git bisect start",
+          "git bisect bad  # current commit is bad",
+          "git bisect good <hash>  # this commit was good",
+          "git bisect good  # mark current as good",
+          "git bisect bad  # mark current as bad",
+          "git bisect reset  # finish bisect",
+          "git bisect run <script>  # auto bisect with script"
+        ]
+      },
+      "blame": {
+        "aliases": [
+          "blame",
+          "who wrote this",
+          "find author",
+          "line history",
+          "who changed this",
+          "git blame",
+          "show author",
+          "who did this"
+        ],
+        "description": "Shows who last modified each line of a file",
+        "commands": [
+          "git blame <file>",
+          "git blame -L 10,20 <file>  # blame specific lines",
+          "git blame -e <file>  # show email instead of name",
+          "git blame -w <file>  # ignore whitespace changes",
+          "git blame <file> -c  # show git commit info"
+        ]
+      },
+      "reflog": {
+        "aliases": [
+          "reflog",
+          "recovery log",
+          "action log",
+          "head history",
+          "undo reset",
+          "git reflog",
+          "lost commits",
+          "recover commits"
+        ],
+        "description": "Shows a log of all your HEAD movements (great for recovery)",
+        "commands": [
+          "git reflog",
+          "git reflog show <branch>  # reflog for specific branch",
+          "git reflog expire --expire=30.days  # cleanup reflog",
+          "git reflog --date=local  # show dates",
+          "git checkout HEAD@{2}  # go back to previous HEAD state"
+        ]
+      },
+      "worktree": {
+        "aliases": [
+          "worktree",
+          "multiple checkouts",
+          "separate worktree",
+          "parallel branches",
+          "git worktree",
+          "add worktree"
+        ],
+        "description": "Manages multiple working trees attached to the same repo",
+        "commands": [
+          "git worktree add <path> <branch>",
+          "git worktree list",
+          "git worktree remove <path>",
+          "git worktree prune  # remove broken worktrees",
+          "git worktree add -b <new-branch> <path> <from-branch>"
+        ]
+      },
+      "submodule": {
+        "aliases": [
+          "submodule",
+          "sub repo",
+          "embedded repo",
+          "git submodule",
+          "submodule update",
+          "nested repo"
+        ],
+        "description": "Manages submodules (repositories inside repositories)",
+        "commands": [
+          "git submodule add <url> <path>",
+          "git submodule init",
+          "git submodule update --init --recursive",
+          "git submodule status",
+          "git submodule deinit <path>",
+          "git submodule update --remote  # update to latest"
+        ]
+      },
+      "force-push": {
+        "aliases": [
+          "force push",
+          "push force",
+          "overwrite remote",
+          "force with lease",
+          "push override",
+          "git push --force"
+        ],
+        "description": "Force pushes to remote (use with caution!)",
+        "commands": [
+          "git push --force <remote> <branch>",
+          "git push --force-with-lease  # safer force push",
+          "git push --force-with-lease=<branch>  # specific branch",
+          "git push origin +<branch>  # alternative force syntax"
+        ]
+      },
+      "pull-rebase": {
+        "aliases": [
+          "pull rebase",
+          "rebase pull",
+          "pull with rebase",
+          "fetch rebase",
+          "pull without merge",
+          "clean pull"
+        ],
+        "description": "Pulls changes and rebases instead of merging",
+        "commands": [
+          "git pull --rebase",
+          "git pull --rebase=interactive  # interactive rebase",
+          "git pull --ff-only  # fast-forward only",
+          "git config --global pull.rebase true  # set as default"
+        ]
+      },
+      "patch": {
+        "aliases": [
+          "patch",
+          "create patch",
+          "format patch",
+          "apply patch",
+          "diff patch",
+          "save changes as patch"
+        ],
+        "description": "Creates or applies patches (diff files)",
+        "commands": [
+          "git format-patch -1 <commit>  # create patch for one commit",
+          "git format-patch <commit>..  # patch for multiple commits",
+          "git apply <patch-file>  # apply patch",
+          "git apply --check <patch-file>  # check if patch applies",
+          "git am <patch-file>  # apply patch as commit"
+        ]
+      },
+      "tag": {
+        "aliases": [
+          "tag",
+          "create tag",
+          "version tag",
+          "release tag",
+          "git tag",
+          "delete tag",
+          "list tags"
+        ],
+        "description": "Manages tags for releases and versioning",
+        "commands": [
+          "git tag <tag-name>",
+          "git tag -a <tag-name> -m \"<message>\"  # annotated tag",
+          "git tag -d <tag-name>  # delete tag",
+          "git push origin <tag-name>  # push tag",
+          "git push --tags  # push all tags",
+          "git tag -l \"v*\"  # list tags matching pattern",
+          "git show <tag>  # show tag details"
+        ]
+      },
+      "hook": {
+        "aliases": [
+          "hooks",
+          "git hooks",
+          "pre-commit",
+          "post-commit",
+          "custom scripts",
+          "trigger scripts"
+        ],
+        "description": "Manages Git hooks (scripts that run on git events)",
+        "commands": [
+          "ls .git/hooks  # list available hooks",
+          "cp .git/hooks/pre-commit.sample .git/hooks/pre-commit  # enable hook",
+          "chmod +x .git/hooks/<hook>  # make hook executable"
         ]
       }
     }
