@@ -5,15 +5,13 @@ from textual.screen import Screen
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Header, Footer, Button, Static
 from textual.binding import Binding
-
-
 class ConfirmScreen(Screen):
     BINDINGS = [
-        Binding("escape", "cerrar", "Cerrar"),
-        Binding("enter", "cerrar", "Cerrar"),
+        Binding("escape", "close", "Close"),
+        Binding("enter", "close", "Close"),
     ]
 
-    def __init__(self, program, key):
+    def __init__(self, program, key):   
         super().__init__()
         self.program = program
         self.key = key
