@@ -1,11 +1,12 @@
 """
-Choose a local program, install one from the remote catalog
-or create a new one. The input search filters both sources at once
+Split screen: left panel = installed programs, right panel = catalog.
+Click an installed program to see its actions.
 """
 from textual import work
 from textual.screen import Screen
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Input
 from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
 
 from cmdfinder.core import score_text
 from cmdfinder.remote_catalog import get_index, install_program, CatalogError
@@ -13,12 +14,13 @@ from cmdfinder.remote_catalog import get_index, install_program, CatalogError
 NEW_PROGRAM_ID = "__new__"
 CATALOG_PREFIX = "catalog_"
 LOCAL_PREFIX = "prog_"
-MINIMUN = 30 # minimun score required
+FILTER_THRESHOLD = 30 # minimun score required
+
 
 def _matches(query, text):
     if not query.strip():
         return True
-    return score_text(query, text) >= MINIMUN
+    return score_text(query, text) >= FILTER_THRESHOLD
 class SelectProgramsScreen(Screen):
     BINDINGS = [Binding("escape", "exit", "Exit")]
 
@@ -29,17 +31,32 @@ class SelectProgramsScreen(Screen):
 
     def compose(self):
         yield Header(show_clock=False)
-        yield Static(
-            "  Pick a program, install from catalog, or create a new one.",
-            classes="subtitle",
+        yield Horizontal(
+            # here we divided the screen in two sections
+
+            # this new section is for 'work' with our installed programs
+            Vertical(
+                Static("  Installed", classes="panel-title"),
+                Input(placeholder="Search installed...", id="search_installed"),
+                ListView(id="installed_list"),
+                id="left_panel",
+            ),
+
+            # this section is the same, it didn't change
+            Vertical(
+                Static("  Catalog", classes="panel-title"),
+                Input(placeholder="Search catalog...", id="search_catalog"),
+                ListView(id="catalog_list"),
+                Static("", id="catalog_status", classes="subtitle"),
+                id="right_panel",
+            ),
+            id="split_container",
         )
-        yield Input(placeholder="Search (local or catalog)...", id="search_input")
-        yield ListView(id="programs_list")
-        yield Static("", id="catalog_status", classes="subtitle")
         yield Footer()
 
     async def on_mount(self) -> None:
-        await self._render_list("")
+        await self._render_installed("")
+        await self._render_catalog("")
         self._load_remote_index()
 
     @work(thread=True)
@@ -53,7 +70,9 @@ class SelectProgramsScreen(Screen):
 
     async def _on_index_ready(self, index: dict) -> None:
         self.remote_index = index
-        await self._render_list(self.query_one("#search_input", Input).value)
+        await self._render_catalog(
+            self.query_one("#search_catalog", Input).value
+        )
 
     def _on_index_failed(self, message: str) -> None:
         self.query_one("#catalog_status", Static).update(
@@ -61,10 +80,13 @@ class SelectProgramsScreen(Screen):
         )
 
     async def on_input_changed(self, event: Input.Changed) -> None:
-        await self._render_list(event.value)
+        if event.input.id == "search_installed":
+            await self._render_installed(event.value)
+        elif event.input.id == "search_catalog":
+            await self._render_catalog(event.value)
 
-    async def _render_list(self, query: str) -> None:
-        lst = self.query_one("#programs_list", ListView)
+    async def _render_installed(self, query: str) -> None:
+        lst = self.query_one("#installed_list", ListView)
         await lst.clear()
 
         local_names = sorted(self.data.keys())
@@ -77,28 +99,39 @@ class SelectProgramsScreen(Screen):
             if not _matches(query, name):
                 continue
             desc = self.data.get(name, {}).get("program_description", "")
-            text = f"{name}" + (f"  \u2014  {desc}" if desc else "")
+            n_actions = len(self.data.get(name, {}).get("actions", {}))
+            text = f"{name}"
+            if desc:
+                text += f"  —  {desc}"
+            text += f"\n  {n_actions} actions"
             lst.append(ListItem(Label(text), id=f"{LOCAL_PREFIX}{name}"))
+
+        lst.append(ListItem(Label("+ Create new program"), id=NEW_PROGRAM_ID))
+
+    async def _render_catalog(self, query: str) -> None:
+        lst = self.query_one("#catalog_list", ListView)
+        await lst.clear()
 
         for name, desc in sorted(self.remote_index.items()):
             if name in self.data:
                 continue
             if not _matches(query, name):
                 continue
-            text = f"\u2b07 {name}  \u2014  {desc}  [catalog]"
+            text = f"{name}"
+            if desc:
+                text += f"  —  {desc}"
+            text += "\n  [catalog]"
             lst.append(ListItem(Label(text), id=f"{CATALOG_PREFIX}{name}"))
-
-        lst.append(ListItem(Label("+ Create new program"), id=NEW_PROGRAM_ID))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         item_id = event.item.id
 
+        if item_id is None:
+            return
+
         if item_id == NEW_PROGRAM_ID:
             from cmdfinder.tui.screens.new_program import NewProgramScreen
             self.app.push_screen(NewProgramScreen(self.data))
-            return
-
-        if item_id == None:
             return
 
         if item_id.startswith(CATALOG_PREFIX):
@@ -106,16 +139,16 @@ class SelectProgramsScreen(Screen):
             self._install_from_catalog(name)
             return
 
-        from cmdfinder.tui.screens.form import FormScreen
-
-        program = item_id.removeprefix(LOCAL_PREFIX)
-        if program not in self.data:
-            desc = (
-                "Commands that do not belong to any program in particular"
-                if program == "general" else ""
-            )
-            self.data[program] = {"program_description": desc, "actions": {}}
-        self.app.push_screen(FormScreen(self.data, program))
+        if item_id.startswith(LOCAL_PREFIX):
+            program = item_id.removeprefix(LOCAL_PREFIX)
+            if program not in self.data:
+                desc = (
+                    "Commands that do not belong to any program in particular"
+                    if program == "general" else ""
+                )
+                self.data[program] = {"program_description": desc, "actions": {}}
+            from cmdfinder.tui.screens.program_actions import ProgramActionsScreen
+            #self.app.push_screen(ProgramActionsScreen(self.data, program))
 
     @work(thread=True)
     def _install_from_catalog(self, name: str) -> None:
@@ -135,7 +168,12 @@ class SelectProgramsScreen(Screen):
             f"[green]\u2713 '{name}' installed ({n_actions} actions). "
             f"Now available with 'cf {name} ...'[/green]"
         )
-        await self._render_list(self.query_one("#search_input", Input).value)
+        await self._render_installed(
+            self.query_one("#search_installed", Input).value
+        )
+        await self._render_catalog(
+            self.query_one("#search_catalog", Input).value
+        )
 
     def _on_install_failed(self, name: str, message: str) -> None:
         self.query_one("#catalog_status", Static).update(
