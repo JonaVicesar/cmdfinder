@@ -56,8 +56,10 @@ def main():
         if len(args) == 1:
             from cmdfinder.tui.app import run_tui
             run_tui()
-            return
- 
+            return 
+
+        # I WILL DISABLE THIS, IT DON'T WORKS THE WAY THAT I WANT :w
+        """    
         from cmdfinder.add_command import add_command, print_add_help
         if len(args) not in (3, 4, 5):
             print_add_help()
@@ -67,7 +69,7 @@ def main():
         alias = args[3] if len(args) >= 4 else None
         description = args[4] if len(args) == 5 else None
         add_command(program_name, command, alias, description)
-        return
+        return """
 
     
     #FOR NOW I WILL NOT USE IT, THE BODY OF THE COMMAND MAY BE TOO LONG
