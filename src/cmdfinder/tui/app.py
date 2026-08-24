@@ -35,6 +35,22 @@ class CmdFinderAddApp(App):
     Button {
         margin-right: 1;
     }
+    #split_container {
+        height: 1fr;
+    }
+    .panel-separator {
+        width: 1;
+        height: 1fr;
+        margin: 0 1;
+        background: $border;
+    }
+    #btn_update_all {
+        margin: 1 1; 
+        min-width: 0;    
+        width: auto;    
+        padding: 0 1;    
+    }
+
     """
 
     TITLE = "cmdfinder \u2014 add comand"

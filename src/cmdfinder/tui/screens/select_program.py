@@ -4,12 +4,12 @@ Click an installed program to see its actions.
 """
 from textual import work
 from textual.screen import Screen
-from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Input
+from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Input, Button
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 
 from cmdfinder.core import score_text
-from cmdfinder.remote_catalog import get_index, install_program, CatalogError
+from cmdfinder.remote_catalog import get_index, install_program, check_updates, CatalogError
 
 NEW_PROGRAM_ID = "__new__"
 CATALOG_PREFIX = "catalog_"
@@ -34,6 +34,8 @@ class SelectProgramsScreen(Screen):
         super().__init__()
         self.data = data
         self.remote_index = {}
+        self.updatable = set()
+        self._busy = False
 
     def compose(self):
         yield Header(show_clock=False)
@@ -44,9 +46,13 @@ class SelectProgramsScreen(Screen):
             Vertical(
                 Static("  Installed", classes="panel-title"),
                 Input(placeholder="Search installed...", id="search_installed"),
+                Button("Update all", id="btn_update_all", variant="warning"),
                 ListView(id="installed_list"),
                 id="left_panel",
             ),
+
+            # visual separator between the two panels
+            Vertical(classes="panel-separator"),
 
             # this section is the same, it didn't change
             Vertical(
@@ -61,6 +67,7 @@ class SelectProgramsScreen(Screen):
         yield Footer()
 
     async def on_mount(self) -> None:
+        self._refresh_updatable()
         await self._render_installed("")
         await self._render_catalog("")
         self._load_remote_index()
@@ -76,6 +83,10 @@ class SelectProgramsScreen(Screen):
 
     async def _on_index_ready(self, index: dict) -> None:
         self.remote_index = index
+        self._refresh_updatable()
+        await self._render_installed(
+            self.query_one("#search_installed", Input).value
+        )
         await self._render_catalog(
             self.query_one("#search_catalog", Input).value
         )
@@ -110,6 +121,8 @@ class SelectProgramsScreen(Screen):
             if desc:
                 text += f"  —  {desc}"
             text += f"\n  {n_actions} actions"
+            if name in self.updatable:
+                text += "\n  [yellow]\u2191 update available[/yellow]"
             lst.append(ListItem(Label(text), id=f"{LOCAL_PREFIX}{name}"))
 
         lst.append(ListItem(Label("+ Create new program"), id=NEW_PROGRAM_ID))
@@ -142,12 +155,17 @@ class SelectProgramsScreen(Screen):
             return
 
         if item_id.startswith(CATALOG_PREFIX):
+            if self._busy:
+                return
             name = item_id.removeprefix(CATALOG_PREFIX)
             self._install_from_catalog(name)
             return
 
         if item_id.startswith(LOCAL_PREFIX):
             program = item_id.removeprefix(LOCAL_PREFIX)
+            if program in self.updatable and not self._busy:
+                self._ask_update([program])
+                return
             if program not in self.data:
                 desc = (
                     "Commands that do not belong to any program in particular"
@@ -186,6 +204,72 @@ class SelectProgramsScreen(Screen):
         self.query_one("#catalog_status", Static).update(
             f"[red]Could not install '{name}': {message}[/red]"
         )
+
+    def _refresh_updatable(self) -> None:
+        self.updatable = set(check_updates())
+        self.query_one("#btn_update_all", Button).display = bool(self.updatable)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn_update_all" and not self._busy:
+            self._ask_update(sorted(self.updatable))
+
+    def _ask_update(self, names: list) -> None:
+        if not names:
+            return
+        from cmdfinder.tui.screens.confirm import UpdateConfirmScreen
+        self._pending_names = list(names)
+        self.app.push_screen(UpdateConfirmScreen(self._pending_names), self._begin_update)
+
+    def _begin_update(self, proceed: bool) -> None:
+        if not proceed or self._busy:
+            return
+        self._busy = True
+        self.query_one("#btn_update_all", Button).disabled = True
+        self._update_programs(self._pending_names)
+
+    @work(thread=True)
+    def _update_programs(self, names: list) -> None:
+        status = self.query_one("#catalog_status", Static)
+        updated, failed = [], []
+
+        for i, name in enumerate(names, 1):
+            self.app.call_from_thread(
+                status.update, f"[dim]Updating {i}/{len(names)}: {name}...[/dim]"
+            )
+            try:
+                program_data = install_program(name)
+                updated.append((name, program_data))
+            except CatalogError as e:
+                failed.append((name, str(e)))
+
+        self.app.call_from_thread(self._on_updates_done, updated, failed)
+
+    async def _on_updates_done(self, updated: list, failed: list) -> None:
+        for name, program_data in updated:
+            self.data[name] = program_data
+
+        self._busy = False
+        btn = self.query_one("#btn_update_all", Button)
+        btn.disabled = False
+        self._refresh_updatable()
+
+        await self._render_installed(
+            self.query_one("#search_installed", Input).value
+        )
+        await self._render_catalog(
+            self.query_one("#search_catalog", Input).value
+        )
+
+        status = self.query_one("#catalog_status", Static)
+        parts = []
+        if updated:
+            parts.append(f"[green]\u2713 Updated: {', '.join(name for name, _ in updated)}[/green]")
+        for name, message in failed:
+            parts.append(f"[red]Could not update '{name}': {message}[/red]")
+        if not parts:
+            status.update("[yellow]Nothing was updated[/yellow]")
+        else:
+            status.update("\n".join(parts))
 
     def action_exit(self) -> None:
         self.app.exit()
