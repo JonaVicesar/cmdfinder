@@ -2,6 +2,8 @@
 Split screen: left panel = installed programs, right panel = catalog.
 Click an installed program to see its actions.
 """
+import asyncio
+
 from textual import work
 from textual.screen import Screen
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Input, Button
@@ -11,9 +13,6 @@ from textual.containers import Horizontal, Vertical
 from cmdfinder.core import score_text
 from cmdfinder.remote_catalog import get_index, install_program, check_updates, CatalogError
 
-NEW_PROGRAM_ID = "__new__"
-CATALOG_PREFIX = "catalog_"
-LOCAL_PREFIX = "prog_"
 FILTER_THRESHOLD = 30 # minimun score required
 
 
@@ -27,6 +26,19 @@ def _index_description(info):
         return info.get("description", "")
     return str(info)
 
+def _list_item(text, kind, name=None):
+    """
+    ListItem carrying its payload as plain attributes instead of an id.
+
+    Dynamic ListItems with ids collide (DuplicateIds) whenever a new render
+    appends before the previous clear() finished removing the old widgets,
+    so we don't use ids here at all.
+    """
+    item = ListItem(Label(text))
+    item.item_kind = kind
+    item.item_name = name
+    return item
+
 class SelectProgramsScreen(Screen):
     BINDINGS = [Binding("escape", "exit", "Exit")]
 
@@ -36,6 +48,7 @@ class SelectProgramsScreen(Screen):
         self.remote_index = {}
         self.updatable = set()
         self._busy = False
+        self._render_lock = asyncio.Lock()
 
     def compose(self):
         yield Header(show_clock=False)
@@ -68,9 +81,24 @@ class SelectProgramsScreen(Screen):
 
     async def on_mount(self) -> None:
         self._refresh_updatable()
-        await self._render_installed("")
-        await self._render_catalog("")
+        await self._refresh_panels()
         self._load_remote_index()
+
+    async def _refresh_panels(self) -> None:
+        """
+        Re-render both lists with the current search queries.
+
+        A lock serializes renders: on_mount and on_screen_resume can fire
+        back to back, and two interleaved renders would append ListItems
+        with duplicated IDs before the previous clear() finishes.
+        """
+        async with self._render_lock:
+            await self._render_installed(
+                self.query_one("#search_installed", Input).value
+            )
+            await self._render_catalog(
+                self.query_one("#search_catalog", Input).value
+            )
 
     @work(thread=True)
     def _load_remote_index(self) -> None:
@@ -84,12 +112,7 @@ class SelectProgramsScreen(Screen):
     async def _on_index_ready(self, index: dict) -> None:
         self.remote_index = index
         self._refresh_updatable()
-        await self._render_installed(
-            self.query_one("#search_installed", Input).value
-        )
-        await self._render_catalog(
-            self.query_one("#search_catalog", Input).value
-        )
+        await self._refresh_panels()
 
     def _on_index_failed(self, message: str) -> None:
         self.query_one("#catalog_status", Static).update(
@@ -123,9 +146,9 @@ class SelectProgramsScreen(Screen):
             text += f"\n  {n_actions} actions"
             if name in self.updatable:
                 text += "\n  [yellow]\u2191 update available[/yellow]"
-            lst.append(ListItem(Label(text), id=f"{LOCAL_PREFIX}{name}"))
+            lst.append(_list_item(text, "local", name))
 
-        lst.append(ListItem(Label("+ Create new program"), id=NEW_PROGRAM_ID))
+        lst.append(_list_item("+ Create new program", "new"))
 
     async def _render_catalog(self, query: str) -> None:
         lst = self.query_one("#catalog_list", ListView)
@@ -141,28 +164,27 @@ class SelectProgramsScreen(Screen):
             if desc:
                 text += f"  —  {desc}"
             text += "\n  [catalog]"
-            lst.append(ListItem(Label(text), id=f"{CATALOG_PREFIX}{name}"))
+            lst.append(_list_item(text, "catalog", name))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        item_id = event.item.id
+        kind = getattr(event.item, "item_kind", None)
 
-        if item_id is None:
+        if kind is None:
             return
 
-        if item_id == NEW_PROGRAM_ID:
+        if kind == "new":
             from cmdfinder.tui.screens.new_program import NewProgramScreen
             self.app.push_screen(NewProgramScreen(self.data))
             return
 
-        if item_id.startswith(CATALOG_PREFIX):
+        if kind == "catalog":
             if self._busy:
                 return
-            name = item_id.removeprefix(CATALOG_PREFIX)
-            self._install_from_catalog(name)
+            self._install_from_catalog(event.item.item_name)
             return
 
-        if item_id.startswith(LOCAL_PREFIX):
-            program = item_id.removeprefix(LOCAL_PREFIX)
+        if kind == "local":
+            program = event.item.item_name
             if program in self.updatable and not self._busy:
                 self._ask_update([program])
                 return
@@ -173,7 +195,10 @@ class SelectProgramsScreen(Screen):
                 )
                 self.data[program] = {"program_description": desc, "actions": {}}
             from cmdfinder.tui.screens.program_actions import ProgramActionsScreen
-            #self.app.push_screen(ProgramActionsScreen(self.data, program))
+            self.app.push_screen(ProgramActionsScreen(self.data, program))
+
+    async def on_screen_resume(self) -> None:
+        await self._refresh_panels()
 
     @work(thread=True)
     def _install_from_catalog(self, name: str) -> None:
@@ -193,12 +218,7 @@ class SelectProgramsScreen(Screen):
             f"[green]\u2713 '{name}' installed ({n_actions} actions). "
             f"Now available with 'cf {name} ...'[/green]"
         )
-        await self._render_installed(
-            self.query_one("#search_installed", Input).value
-        )
-        await self._render_catalog(
-            self.query_one("#search_catalog", Input).value
-        )
+        await self._refresh_panels()
 
     def _on_install_failed(self, name: str, message: str) -> None:
         self.query_one("#catalog_status", Static).update(
@@ -253,12 +273,7 @@ class SelectProgramsScreen(Screen):
         btn.disabled = False
         self._refresh_updatable()
 
-        await self._render_installed(
-            self.query_one("#search_installed", Input).value
-        )
-        await self._render_catalog(
-            self.query_one("#search_catalog", Input).value
-        )
+        await self._refresh_panels()
 
         status = self.query_one("#catalog_status", Static)
         parts = []

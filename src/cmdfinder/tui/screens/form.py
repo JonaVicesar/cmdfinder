@@ -14,23 +14,43 @@ class FormScreen(Screen):
         Binding("ctrl+s", "save", "Save"),
     ]   
 
-    def __init__(self, data, program):
+    def __init__(self, data, program, action_key=None):
         super().__init__()
         self.data = data
         self.program = program
+        self.action_key = action_key
 
     def compose(self):
+        existing = {}
+        if self.action_key:
+            existing = (
+                self.data.get(self.program, {}).get("actions", {}).get(self.action_key)
+                or {}
+            )
+
         yield Header(show_clock=False)
         yield VerticalScroll(
             Label(f"Program: [b]{self.program}[/b]", classes="subtitle"),
             Label("Action name (ex. 'remove branch'):"),
-            Input(placeholder="remove branch", id="input_action"),
+            Input(
+                value=self.action_key or "",
+                placeholder="remove branch",
+                id="input_action",
+            ),
             Label("Alias separated by a coma (optional):"),
-            Input(placeholder="borrar rama, delete branch", id="input_aliases"),
+            Input(
+                value=", ".join(existing.get("aliases", [])),
+                placeholder="borrar rama, delete branch",
+                id="input_aliases",
+            ),
             Label("Description:"),
-            Input(placeholder="what does this action", id="input_description"),
+            Input(
+                value=existing.get("description", ""),
+                placeholder="what does this action",
+                id="input_description",
+            ),
             Label("Comands (one for line, optional if the action already exists):"),
-            TextArea(id="textarea_comands"),
+            TextArea("\n".join(existing.get("commands", [])), id="textarea_comands"),
             Horizontal(
                 Button("Save (Ctrl+S)", variant="success", id="btn_save"),
                 Button("Cancel (Esc)", variant="error", id="btn_cancel"),

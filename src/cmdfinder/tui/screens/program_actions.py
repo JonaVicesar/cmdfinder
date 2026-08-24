@@ -2,6 +2,8 @@
 Screen that shows all actions for a selected program.
 Click an action to edit it, or '+ Add action' to create a new one.
 """
+import asyncio
+
 from textual.screen import Screen
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Button, Static
 from textual.binding import Binding
@@ -12,13 +14,11 @@ from cmdfinder.core import normalize_key
 class ProgramActionsScreen(Screen):
     BINDINGS = [Binding("escape", "back", "Back")]
 
-    ACTION_PREFIX = "action_"
-    ADD_ACTION_ID = "__add_action__"
-
     def __init__(self, data, program):
         super().__init__()
         self.data = data
         self.program = program
+        self._render_lock = asyncio.Lock()
 
     def compose(self):
         actions = self.data.get(self.program, {}).get("actions", {})
@@ -39,34 +39,39 @@ class ProgramActionsScreen(Screen):
     async def on_mount(self) -> None:
         await self._render_actions()
 
+    async def on_screen_resume(self) -> None:
+        await self._render_actions()
+
     async def _render_actions(self) -> None:
-        lst = self.query_one("#actions_list", ListView)
-        await lst.clear()
+        # same lock as SelectProgramsScreen: mount and resume can interleave
+        async with self._render_lock:
+            lst = self.query_one("#actions_list", ListView)
+            await lst.clear()
 
-        actions = self.data.get(self.program, {}).get("actions", {})
-        for key in sorted(actions.keys()):
-            info = actions[key]
-            description = info.get("description", "")
-            n_aliases = len(info.get("aliases", []))
-            n_commands = len(info.get("commands", []))
+            actions = self.data.get(self.program, {}).get("actions", {})
+            for key in sorted(actions.keys()):
+                info = actions[key]
+                description = info.get("description", "")
+                n_aliases = len(info.get("aliases", []))
+                n_commands = len(info.get("commands", []))
 
-            text = f"{key}"
-            if description:
-                text += f"  —  {description}"
-            text += f"\n  {n_aliases} aliases · {n_commands} commands"
+                text = f"{key}"
+                if description:
+                    text += f"  —  {description}"
+                text += f"\n  {n_aliases} aliases · {n_commands} commands"
 
-            lst.append(ListItem(Label(text), id=f"{self.ACTION_PREFIX}{key}"))
+                item = ListItem(Label(text))
+                item.action_key = key
+                lst.append(item)
+
+            add_item = ListItem(Label("+ Add action"))
+            add_item.action_key = None
+            lst.append(add_item)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        item_id = event.item.id
-
-        if item_id == self.ADD_ACTION_ID:
-            self._open_form(action_key=None)
+        if not hasattr(event.item, "action_key"):
             return
-
-        if item_id and item_id.startswith(self.ACTION_PREFIX):
-            action_key = item_id.removeprefix(self.ACTION_PREFIX)
-            self._open_form(action_key=action_key)
+        self._open_form(action_key=event.item.action_key)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn_add":
