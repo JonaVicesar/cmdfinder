@@ -73,13 +73,6 @@ def download_program(name):
 def _parse_date(value):
     """
     Parse an update field into a comparable (year, month, day) tuple.
-
-    Accepts every format the catalog or old registries have used:
-    'DD-MM-YY' (current), 'DD:MM:YYYY' (legacy), 'YYYY-MM-DD'.
-Conversations
-Conversations
-Conversations
-    Returns None if value is missing or unparseable.
     """
     if not isinstance(value, str):
         return None
@@ -108,7 +101,7 @@ def _save_installed(registry):
     Write INSTALLED_PROGRAMS
 
     Every entry is normalized before saving legacy dates ('22:08:2026')
-    are rewritten as 'DD-MM-YY' so the file converges to a single format.
+    are rewritten as 'DD-MM-YY' so the file converges to a single format
     """
     normalized = {}
     for name, info in sorted(registry.items()):
@@ -148,16 +141,35 @@ def _stamp_installed(name, program_data):
 
 def install_program(name):
     """
-    Download a program from the catalog and link it to the local data (DATA_FILE) 
+    Download a program from the catalog and link it to the local data (DATA_FILE)
     If it already exists locally it is overwritten with the version from the catalog.
-    Now very install is registered in INSTALLED_PROGRAMS with its catalog version  
+    Now very install is registered in INSTALLED_PROGRAMS with its catalog version
     """
-    program_data = download_program(name)
+    fresh = download_program(name)
     local_data = load_data()
-    local_data[name] = program_data
+    current = local_data.get(name) or {}
+
+    actions = dict(current.get("actions") or {})
+    for key, info in (fresh.get("actions") or {}).items():
+        old = actions.get(key)
+        if not isinstance(old, dict):
+            actions[key] = info
+            continue
+        actions[key] = {
+            "aliases": list(dict.fromkeys(old.get("aliases", []) + info.get("aliases", []))),
+            "description": info.get("description") or old.get("description", ""),
+            "commands": list(dict.fromkeys(old.get("commands", []) + info.get("commands", []))),
+        }
+
+    merged = {
+        "program_description": fresh.get("program_description") or current.get("program_description", ""),
+        "actions": actions,
+    }
+
+    local_data[name] = merged
     save_data(local_data)
-    _stamp_installed(name, program_data)
-    return program_data
+    _stamp_installed(name, merged)
+    return merged
 
 def check_updates():
     """
