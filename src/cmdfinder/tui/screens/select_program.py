@@ -21,6 +21,12 @@ def _matches(query, text):
     if not query.strip():
         return True
     return score_text(query, text) >= FILTER_THRESHOLD
+
+def _index_description(info):
+    if isinstance(info, dict):
+        return info.get("description", "")
+    return str(info)
+
 class SelectProgramsScreen(Screen):
     BINDINGS = [Binding("escape", "exit", "Exit")]
 
@@ -112,11 +118,12 @@ class SelectProgramsScreen(Screen):
         lst = self.query_one("#catalog_list", ListView)
         await lst.clear()
 
-        for name, desc in sorted(self.remote_index.items()):
+        for name, info in sorted(self.remote_index.items()):
             if name in self.data:
                 continue
             if not _matches(query, name):
                 continue
+            desc = _index_description(info)
             text = f"{name}"
             if desc:
                 text += f"  —  {desc}"
