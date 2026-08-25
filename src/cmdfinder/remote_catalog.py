@@ -85,7 +85,7 @@ def _parse_date(value):
         return (d.year, d.month, d.day)
     return None
 
-def _load_installed():
+def load_installed():
     """Read INSTALLED_PROGRAMS, returns {} if it doesn't exist or is corrupt"""
     if not INSTALLED_PROGRAMS.exists():
         return {}
@@ -96,7 +96,7 @@ def _load_installed():
         return {}
     return data if isinstance(data, dict) else {}
 
-def _save_installed(registry):
+def save_installed(registry):
     """
     Write INSTALLED_PROGRAMS
 
@@ -132,12 +132,12 @@ def _stamp_installed(name, program_data):
     if not _parse_date(update):
         update = _today
 
-    registry = _load_installed()
+    registry = load_installed()
     registry[name] = {
         "description": description or program_data.get("program_description", ""),
         "update": update,
     }
-    _save_installed(registry)
+    save_installed(registry)
 
 def install_program(name):
     """
@@ -171,13 +171,32 @@ def install_program(name):
     _stamp_installed(name, merged)
     return merged
 
+def uninstall_program(name):
+    """
+    Remove a program from DATA_FILE and its entry from INSTALLED_PROGRAMS,
+    custom aliases and actions included. Returns True if the program existed
+    locally, False (touching nothing) otherwise.
+    """
+    local_data = load_data()
+    if name not in local_data:
+        return False
+
+    del local_data[name]
+    save_data(local_data)
+
+    registry = load_installed()
+    if name in registry:
+        del registry[name]
+        save_installed(registry)
+    return True
+
 def check_updates():
     """
     Compare the version registered at INSTALLED_PROGRAMS against
     the catalog index cache, returning the names of programs with a newer
     version in the catalog
     """
-    installed_programs = _load_installed()
+    installed_programs = load_installed()
     updatable = []
 
     if not installed_programs or not INDEX_CACHE_FILE.exists():
