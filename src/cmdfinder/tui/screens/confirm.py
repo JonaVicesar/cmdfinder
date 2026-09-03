@@ -43,29 +43,29 @@ class ConfirmScreen(Screen):
         self.app.exit()
 
 
-class UpdateConfirmScreen(Screen):
+class AskScreen(Screen):
     """
     Yes/No confirmation before syncing programs from the catalog.
-    Push it with a callback; it dismisses with True (update) or False (cancel).
+    Push it with a callback it dismisses with True (update) or False (cancel)
     """
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
 
-    def __init__(self, names):
+    def __init__(self, title, detail="", yes_label="Yes"):
         super().__init__()
-        self.names = list(names)
+        self.title = title
+        self.detail = detail
+        self.yes_label = yes_label
 
     def compose(self):
-        listing = ", ".join(self.names)
         yield Header(show_clock=False)
         yield Vertical(
             Static(
-                f"\nUpdate {len(self.names)} program(s)?\n"
-                f"[b]{listing}[/b]\n\n"
-                "Your custom aliases and commands will be kept.\n",
+                f"\n{self.title}\n"
+                + (f"{self.detail}\n" if self.detail else ""),
                 classes="subtitle",
             ),
             Horizontal(
-                Button("Update", variant="success", id="btn_yes"),
+                Button(self.yes_label, variant="success", id="btn_yes"),
                 Button("Cancel", variant="error", id="btn_no"),
             ),
             classes="form-container",

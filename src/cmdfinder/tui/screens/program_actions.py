@@ -4,10 +4,11 @@ Click an action to edit it, or '+ Add action' to create a new one.
 """
 import asyncio
 
+from textual import work
 from textual.screen import Screen
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Button, Static
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 
 from cmdfinder.core import normalize_key
 
@@ -31,7 +32,10 @@ class ProgramActionsScreen(Screen):
                 classes="subtitle",
             ),
             ListView(id="actions_list"),
-            Button("+ Add action", id="btn_add", variant="success"),
+            Horizontal(
+                Button("+ Add action", id="btn_add", variant="success"),
+                Button("Remove program", id="btn_remove", variant="error"),
+            ),
             id="actions_container",
         )
         yield Footer()
@@ -76,6 +80,38 @@ class ProgramActionsScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn_add":
             self._open_form(action_key=None)
+        elif event.button.id == "btn_remove":
+            self._ask_remove()
+
+    def _ask_remove(self) -> None:
+        from cmdfinder.tui.screens.confirm import AskScreen
+
+        n_actions = len(self.data.get(self.program, {}).get("actions", {}))
+        self.app.push_screen(
+            AskScreen(
+                f"Remove '{self.program}'?",
+                f"This deletes {n_actions} actions and any custom aliases you added.",
+                yes_label="Remove",
+            ),
+            self._do_remove,
+        )
+
+    def _do_remove(self, proceed: bool) -> None:
+        if not proceed:
+            return
+        self._remove_worker()
+
+    @work(thread=True)
+    def _remove_worker(self) -> None:
+        from cmdfinder.remote_catalog import uninstall_program
+        uninstall_program(self.program)
+        self.app.call_from_thread(self._on_removed)
+
+    def _on_removed(self) -> None:
+        self.data.pop(self.program, None)
+        # back to the selector; its on_screen_resume refreshes both panels,
+        # so the program reappears in the catalog side if the index offers it
+        self.app.pop_screen()
 
     def _open_form(self, action_key=None):
         from cmdfinder.tui.screens.form import FormScreen

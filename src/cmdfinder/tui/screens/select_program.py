@@ -27,13 +27,6 @@ def _index_description(info):
     return str(info)
 
 def _list_item(text, kind, name=None):
-    """
-    ListItem carrying its payload as plain attributes instead of an id.
-
-    Dynamic ListItems with ids collide (DuplicateIds) whenever a new render
-    appends before the previous clear() finished removing the old widgets,
-    so we don't use ids here at all.
-    """
     item = ListItem(Label(text))
     item.item_kind = kind
     item.item_name = name
@@ -85,13 +78,6 @@ class SelectProgramsScreen(Screen):
         self._load_remote_index()
 
     async def _refresh_panels(self) -> None:
-        """
-        Re-render both lists with the current search queries.
-
-        A lock serializes renders: on_mount and on_screen_resume can fire
-        back to back, and two interleaved renders would append ListItems
-        with duplicated IDs before the previous clear() finishes.
-        """
         async with self._render_lock:
             await self._render_installed(
                 self.query_one("#search_installed", Input).value
@@ -236,9 +222,16 @@ class SelectProgramsScreen(Screen):
     def _ask_update(self, names: list) -> None:
         if not names:
             return
-        from cmdfinder.tui.screens.confirm import UpdateConfirmScreen
+        from cmdfinder.tui.screens.confirm import AskScreen
         self._pending_names = list(names)
-        self.app.push_screen(UpdateConfirmScreen(self._pending_names), self._begin_update)
+        self.app.push_screen(
+            AskScreen(
+                f"Update {len(names)} program(s)?",
+                ", ".join(names) + "\nYour custom aliases will be kept.",
+                yes_label="Update",
+            ),
+            self._begin_update,
+        )
 
     def _begin_update(self, proceed: bool) -> None:
         if not proceed or self._busy:
